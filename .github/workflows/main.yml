@@ -2,15 +2,15 @@ name: AI Report Hunter
 
 on:
   schedule:
-    # Runs every 4 hours
-    - cron: '0 */4 * * *'
-  workflow_dispatch: # Allows you to click "Run" manually to test
+    # Runs every 6 hours (00:00, 06:00, 12:00, 18:00 UTC)
+    - cron: '0 */6 * * *'
+  workflow_dispatch: # Allows manual testing
 
 jobs:
   check_and_summarize:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Needed to save the list of read reports
+      contents: write # Essential for saving the "seen" list
       
     steps:
       - name: Checkout code
@@ -23,7 +23,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install requests feedparser openai beautifulsoup4 pypdf tiktoken
+          pip install requests feedparser openai beautifulsoup4 pypdf
 
       - name: Run Watchdog Script
         env:
@@ -37,4 +37,5 @@ jobs:
           git config --global user.name 'AI Watchdog'
           git config --global user.email 'automation@example.com'
           git add seen_reports.txt
+          # Only commit if seen_reports.txt actually changed
           git diff --quiet && git diff --staged --quiet || (git commit -m "Update seen reports" && git push)

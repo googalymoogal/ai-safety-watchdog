@@ -9,14 +9,20 @@ from pypdf import PdfReader
 
 # --- CONFIGURATION ---
 FEEDS = [
-    "https://openai.com/index/rss",
-    "https://www.anthropic.com/rss", 
-    "https://deepmind.google/blog/rss.xml",
-    "https://ai.meta.com/blog/rss.xml",
+    # (Name, URL)
+    ("OpenAI", "https://openai.com/index/rss"),
+    ("Anthropic", "https://www.anthropic.com/rss"),
+    ("DeepMind", "https://deepmind.google/blog/rss.xml"),
+    ("Meta AI", "https://ai.meta.com/blog/rss.xml"),
 ]
 
 SEEN_FILE = "seen_reports.txt"
-client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+
+# Initialize OpenAI
+try:
+    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+except:
+    print("CRITICAL ERROR: OpenAI Key missing.")
 
 def load_seen():
     if not os.path.exists(SEEN_FILE):
@@ -30,16 +36,20 @@ def save_seen(link):
         f.write(f"{link}\n")
 
 def send_telegram(message):
-    token = os.environ["TELEGRAM_TOKEN"]
-    chat_id = os.environ["TELEGRAM_CHAT_ID"]
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-    
-    if len(message) > 4000:
-        parts = [message[i:i+4000] for i in range(0, len(message), 4000)]
-        for part in parts:
-            requests.post(url, json={"chat_id": chat_id, "text": part, "parse_mode": "Markdown"})
-    else:
-        requests.post(url, json={"chat_id": chat_id, "text": message, "parse_mode": "Markdown"})
+    try:
+        token = os.environ["TELEGRAM_TOKEN"]
+        chat_id = os.environ["TELEGRAM_CHAT_ID"]
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        
+        # Split long messages if needed
+        if len(message) > 4000:
+            parts = [message[i:i+4000] for i in range(0, len(message), 4000)]
+            for part in parts:
+                requests.post(url, json={"chat_id": chat_id, "text": part, "parse_mode": "Markdown"})
+        else:
+            requests.post(url, json={"chat_id": chat_id, "text": message, "parse_mode": "Markdown"})
+    except Exception as e:
+        print(f"Telegram Error: {e}")
 
 def get_pdf_text(url):
     try:
@@ -53,9 +63,31 @@ def get_pdf_text(url):
     except:
         return None
 
+def fetch_feed_stealth(url):
+    """
+    Fetches RSS feed using browser headers to bypass Cloudflare blocks.
+    """
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+    }
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        return feedparser.parse(response.content)
+    except Exception as e:
+        print(f"Feed fetch error: {e}")
+        return None
+
 def find_hidden_pdf(blog_url):
     try:
-        response = requests.get(blog_url, headers={"User-Agent": "Mozilla/5.0"})
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
+        response = requests.get(blog_url, headers=headers, timeout=10)
+        
+        if response.status_code != 200:
+            return None # Scraper blocked
+            
         soup = BeautifulSoup(response.content, 'html.parser')
         
         for a in soup.find_all('a', href=True):
@@ -64,74 +96,79 @@ def find_hidden_pdf(blog_url):
                 if not pdf_url.startswith('http'):
                     pdf_url = requests.compat.urljoin(blog_url, pdf_url)
                 return pdf_url
-        return soup.get_text()[:15000] 
+        
+        text = soup.get_text()
+        if len(text) < 100: return None
+        return text[:15000] 
     except:
         return None
 
-def analyze_with_ai(text, title, is_pdf):
-    source_type = "Technical PDF Report" if is_pdf else "Blog Post"
-    
+def analyze_with_ai(text, title, source_name):
+    print(f"Generating summary for {source_name}...")
     prompt = f"""
-    You are a Tech Reporter for an elite audience.
-    I have a {source_type} titled "{title}".
+    You are an Expert Tech Analyst.
+    Source: {source_name} - "{title}".
     
-    CRITICAL INSTRUCTION:
-    If this text is just generic marketing (e.g., "We hired a new VP" or "Customer success story"), reply with EXACTLY: "SKIP_marketing".
+    Summarize this for a Telegram update.
+    1. **Headline**: One sentence summary.
+    2. **Key Details**: 2-3 sentences on the tech/policy.
+    3. **Risk Analysis**: Explicitly look for "evaluations," "safety," "biological/chemical" risks, or "sabotage." If none, say "No specific safety risks reported."
     
-    If it is a real technical update or safety report, summarize it using this structure:
-    
-    1. **The Headline**: One sentence explaining what happened in plain English.
-    2. **The Details**: A brief paragraph (3-4 sentences). Explain it as if you are reading it aloud to a smart friend. Simplify the jargon.
-    3. **Safety & Risks** (Crucial): Did they mention "red teaming," "biological risks," "sabotage," or "evaluations"? If yes, detail it. If no, say "No specific safety risks mentioned."
-    4. **The "So What?"**: Why does this matter?
-    
-    Keep the tone conversational but serious. Use emojis for bullet points.
-    
-    TEXT:
-    {text[:20000]}
+    Text:
+    {text[:15000]}
     """
-
-    response = client.chat.completions.create(
-        model="gpt-4o-mini", 
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return response.choices[0].message.content
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini", 
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"Summary failed: {e}"
 
 def run_watchdog():
-    print("Checking feeds...")
+    print("Starting stealth scan...")
     seen_links = load_seen()
     
-    for feed_url in FEEDS:
-        try:
-            feed = feedparser.parse(feed_url)
-            for entry in feed.entries[:2]:
-                if entry.link not in seen_links:
-                    print(f"Investigating: {entry.title}")
-                    
-                    content_data = find_hidden_pdf(entry.link)
-                    is_pdf = False
-                    
-                    if content_data and content_data.startswith("http") and content_data.endswith(".pdf"):
-                        content_data = get_pdf_text(content_data)
-                        is_pdf = True
-                    
-                    if content_data:
-                        summary = analyze_with_ai(content_data, entry.title, is_pdf)
-                        
-                        # --- FILTER CHECK ---
-                        # I commented this out so you can see the result immediately. 
-                        # To enable strict filtering later, remove the '#' from the next two lines:
-                        # if "SKIP_marketing" in summary:
-                        #     print("Skipped marketing fluff.")
-                        # else:
-                        
-                        final_msg = f"🔗 [Read Full Report]({entry.link})\n\n{summary}"
-                        send_telegram(final_msg)
-                        
-                        save_seen(entry.link)
-                        time.sleep(2)
-        except Exception as e:
-            print(f"Error checking feed {feed_url}: {e}")
+    for name, feed_url in FEEDS:
+        print(f"--- Checking {name} ---")
+        feed = fetch_feed_stealth(feed_url)
+        
+        if not feed or len(feed.entries) == 0:
+            print(f"⚠️  {name} feed looks empty or blocked.")
+            continue
+            
+        print(f"Found {len(feed.entries)} entries.")
+        
+        # Check top 5 entries
+        for entry in feed.entries[:5]:
+            if entry.link not in seen_links:
+                print(f"NEW: {entry.title}")
+                
+                # 1. Try to scrape
+                content_data = find_hidden_pdf(entry.link)
+                is_pdf = False
+                
+                # 2. Check PDF
+                if content_data and content_data.startswith("http") and content_data.endswith(".pdf"):
+                    content_data = get_pdf_text(content_data)
+                    is_pdf = True
+                
+                # 3. Fallback to RSS summary if scraping failed
+                if not content_data:
+                    print("Scraping blocked. Using RSS fallback.")
+                    content_data = getattr(entry, 'summary', '') or getattr(entry, 'description', '')
+                
+                # 4. Process if we have ANY data
+                if content_data and len(content_data) > 50:
+                    summary = analyze_with_ai(content_data, entry.title, name)
+                    final_msg = f"🔗 [Read {name} Report]({entry.link})\n\n{summary}"
+                    send_telegram(final_msg)
+                    save_seen(entry.link)
+                    time.sleep(2) # Be polite
+                else:
+                    print("Skipping - No content could be extracted.")
 
 if __name__ == "__main__":
     run_watchdog()

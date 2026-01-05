@@ -1,0 +1,40 @@
+name: AI Report Hunter
+
+on:
+  schedule:
+    # Runs every 4 hours
+    - cron: '0 */4 * * *'
+  workflow_dispatch: # Allows you to click "Run" manually to test
+
+jobs:
+  check_and_summarize:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed to save the list of read reports
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install requests feedparser openai beautifulsoup4 pypdf tiktoken
+
+      - name: Run Watchdog Script
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python watchdog.py
+
+      - name: Commit and Push if updated
+        run: |
+          git config --global user.name 'AI Watchdog'
+          git config --global user.email 'automation@example.com'
+          git add seen_reports.txt
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update seen reports" && git push)

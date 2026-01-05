@@ -12,7 +12,7 @@ FEEDS = [
     "https://openai.com/index/rss",
     "https://www.anthropic.com/rss", 
     "https://deepmind.google/blog/rss.xml",
-    "https://ai.meta.com/blog/rss.xml", # Added Meta AI
+    "https://ai.meta.com/blog/rss.xml",
 ]
 
 SEEN_FILE = "seen_reports.txt"
@@ -34,7 +34,6 @@ def send_telegram(message):
     chat_id = os.environ["TELEGRAM_CHAT_ID"]
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     
-    # Chunking for long messages
     if len(message) > 4000:
         parts = [message[i:i+4000] for i in range(0, len(message), 4000)]
         for part in parts:
@@ -48,7 +47,6 @@ def get_pdf_text(url):
         f = io.BytesIO(response.content)
         reader = PdfReader(f)
         text = ""
-        # Read first 15 pages (usually contains the executive summary & risks)
         for page in reader.pages[:15]: 
             text += page.extract_text() + "\n"
         return text
@@ -60,15 +58,12 @@ def find_hidden_pdf(blog_url):
         response = requests.get(blog_url, headers={"User-Agent": "Mozilla/5.0"})
         soup = BeautifulSoup(response.content, 'html.parser')
         
-        # Priority: Find a PDF link
         for a in soup.find_all('a', href=True):
             if a['href'].endswith('.pdf'):
                 pdf_url = a['href']
                 if not pdf_url.startswith('http'):
                     pdf_url = requests.compat.urljoin(blog_url, pdf_url)
                 return pdf_url
-        
-        # Fallback: Just return blog text
         return soup.get_text()[:15000] 
     except:
         return None
@@ -109,12 +104,10 @@ def run_watchdog():
     for feed_url in FEEDS:
         try:
             feed = feedparser.parse(feed_url)
-            # Check only the newest 2 items to save API costs
             for entry in feed.entries[:2]:
                 if entry.link not in seen_links:
                     print(f"Investigating: {entry.title}")
                     
-                    # 1. Scrape
                     content_data = find_hidden_pdf(entry.link)
                     is_pdf = False
                     
@@ -123,18 +116,18 @@ def run_watchdog():
                         is_pdf = True
                     
                     if content_data:
-                        # 2. Analyze
                         summary = analyze_with_ai(content_data, entry.title, is_pdf)
                         
-                        # 3. Filter Marketing Fluff
-                        if "SKIP_marketing" not in summary:
-                            # Put Link at the VERY TOP
-                            final_msg = f"🔗 [Read Full Report]({entry.link})\n\n{summary}"
-                            send_telegram(final_msg)
-                        else:
-                            print("Skipped marketing fluff.")
+                        # --- FILTER CHECK ---
+                        # I commented this out so you can see the result immediately. 
+                        # To enable strict filtering later, remove the '#' from the next two lines:
+                        # if "SKIP_marketing" in summary:
+                        #     print("Skipped marketing fluff.")
+                        # else:
                         
-                        # 4. Mark as seen (even if we skipped it, so we don't check again)
+                        final_msg = f"🔗 [Read Full Report]({entry.link})\n\n{summary}"
+                        send_telegram(final_msg)
+                        
                         save_seen(entry.link)
                         time.sleep(2)
         except Exception as e:

@@ -2,3 +2,4 @@ https://deepmind.google/blog/googles-year-in-review-8-areas-with-research-breakt
 https://deepmind.google/blog/gemini-3-flash-frontier-intelligence-built-for-speed/
 https://deepmind.google/blog/gemma-scope-2-helping-the-ai-safety-community-deepen-understanding-of-complex-language-model-behavior/
 https://deepmind.google/blog/deepening-our-partnership-with-the-uk-ai-security-institute/
+https://deepmind.google/blog/veo-3-1-ingredients-to-video-more-consistency-creativity-and-control/

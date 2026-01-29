@@ -4,3 +4,4 @@ https://deepmind.google/blog/gemma-scope-2-helping-the-ai-safety-community-deepe
 https://deepmind.google/blog/deepening-our-partnership-with-the-uk-ai-security-institute/
 https://deepmind.google/blog/veo-3-1-ingredients-to-video-more-consistency-creativity-and-control/
 https://deepmind.google/blog/d4rt-teaching-ai-to-see-the-world-in-four-dimensions/
+https://deepmind.google/blog/project-genie-experimenting-with-infinite-interactive-worlds/

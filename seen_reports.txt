@@ -6,3 +6,4 @@ https://deepmind.google/blog/veo-3-1-ingredients-to-video-more-consistency-creat
 https://deepmind.google/blog/d4rt-teaching-ai-to-see-the-world-in-four-dimensions/
 https://deepmind.google/blog/project-genie-experimenting-with-infinite-interactive-worlds/
 https://deepmind.google/blog/accelerating-mathematical-and-scientific-discovery-with-gemini-deep-think/
+https://deepmind.google/blog/gemini-3-deep-think-advancing-science-research-and-engineering/

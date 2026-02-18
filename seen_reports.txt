@@ -7,3 +7,4 @@ https://deepmind.google/blog/d4rt-teaching-ai-to-see-the-world-in-four-dimension
 https://deepmind.google/blog/project-genie-experimenting-with-infinite-interactive-worlds/
 https://deepmind.google/blog/accelerating-mathematical-and-scientific-discovery-with-gemini-deep-think/
 https://deepmind.google/blog/gemini-3-deep-think-advancing-science-research-and-engineering/
+https://deepmind.google/blog/accelerating-discovery-in-india-through-ai-powered-science-and-education/

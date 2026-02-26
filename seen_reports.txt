@@ -10,3 +10,4 @@ https://deepmind.google/blog/gemini-3-deep-think-advancing-science-research-and-
 https://deepmind.google/blog/accelerating-discovery-in-india-through-ai-powered-science-and-education/
 https://deepmind.google/blog/a-new-way-to-express-yourself-gemini-can-now-create-music/
 https://deepmind.google/blog/gemini-3-1-pro-a-smarter-model-for-your-most-complex-tasks/
+https://deepmind.google/blog/nano-banana-2-combining-pro-capabilities-with-lightning-fast-speed/

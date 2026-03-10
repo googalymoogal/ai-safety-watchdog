@@ -2,29 +2,33 @@ name: AI Report Hunter
 
 on:
   schedule:
-    # Runs every 6 hours (00:00, 06:00, 12:00, 18:00 UTC)
+    # Runs every 6 hours: 00:00, 06:00, 12:00, 18:00 UTC
     - cron: '0 */6 * * *'
-  workflow_dispatch: # Allows manual testing
+  workflow_dispatch:
 
 jobs:
   check_and_summarize:
     runs-on: ubuntu-latest
+
     permissions:
-      contents: write # Essential for saving the "seen" list
-      
+      contents: write
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: '3.11'
+          cache: 'pip'
 
       - name: Install dependencies
-  run: |
-    python -m pip install --upgrade pip
-    pip install requests feedparser openai beautifulsoup4 pypdf
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests feedparser openai beautifulsoup4 pypdf
 
       - name: Run Watchdog Script
         env:
@@ -33,10 +37,15 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: python watchdog.py
 
-      - name: Commit and Push if updated
+      - name: Commit and push seen_reports updates
         run: |
-          git config --global user.name 'AI Watchdog'
-          git config --global user.email 'automation@example.com'
+          git config --global user.name "AI Watchdog"
+          git config --global user.email "automation@example.com"
           git add seen_reports.txt
-          # Only commit if seen_reports.txt actually changed
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update seen reports" && git push)
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Update seen reports"
+            git push
+          fi

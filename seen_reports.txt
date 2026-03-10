@@ -12,3 +12,4 @@ https://deepmind.google/blog/a-new-way-to-express-yourself-gemini-can-now-create
 https://deepmind.google/blog/gemini-3-1-pro-a-smarter-model-for-your-most-complex-tasks/
 https://deepmind.google/blog/nano-banana-2-combining-pro-capabilities-with-lightning-fast-speed/
 https://deepmind.google/blog/gemini-3-1-flash-lite-built-for-intelligence-at-scale/
+https://deepmind.google/blog/10-years-of-alphago/

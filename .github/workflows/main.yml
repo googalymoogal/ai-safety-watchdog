@@ -22,8 +22,9 @@ jobs:
           python-version: '3.9'
 
       - name: Install dependencies
-        run: |
-          pip install requests feedparser openai beautifulsoup4 pypdf
+  run: |
+    python -m pip install --upgrade pip
+    pip install requests feedparser openai beautifulsoup4 pypdf
 
       - name: Run Watchdog Script
         env:
